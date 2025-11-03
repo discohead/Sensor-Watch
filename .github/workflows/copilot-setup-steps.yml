@@ -7,7 +7,7 @@ on:
       - '.github/workflows/copilot-setup-steps.yml'
 
 env:
-  COLOR: BLUE
+  COLOR: GREEN
 
 jobs:
   setup-toolchain-and-build:
