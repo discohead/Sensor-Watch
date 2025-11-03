@@ -12,6 +12,8 @@ env:
 jobs:
   setup-toolchain-and-build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -56,6 +58,8 @@ jobs:
 
   setup-emulator:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
