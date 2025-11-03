@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
@@ -107,7 +107,7 @@ jobs:
           sleep 3
           
           # Test if server is responding
-          curl -I http://localhost:8000/watch.html || (echo "Failed to access emulator" && exit 1)
+          curl -I --max-time 10 http://localhost:8000/watch.html || (echo "Failed to access emulator" && exit 1)
           
           # Stop server
           kill $SERVER_PID
