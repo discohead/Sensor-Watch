@@ -1,0 +1,128 @@
+name: Copilot Setup Steps
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/copilot-setup-steps.yml'
+
+env:
+  COLOR: GREEN
+
+jobs:
+  setup-toolchain-and-build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Work around CVE-2022-24765
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Install ARM toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi
+
+      - name: Verify ARM toolchain installation
+        run: |
+          echo "Verifying ARM toolchain..."
+          arm-none-eabi-gcc --version
+          arm-none-eabi-objcopy --version
+          echo "ARM toolchain successfully installed!"
+
+      - name: Build movement firmware
+        run: make
+        working-directory: 'movement/make'
+
+      - name: Verify build artifacts
+        run: |
+          echo "Checking build artifacts..."
+          ls -lh movement/make/build/
+          file movement/make/build/watch.elf
+          file movement/make/build/watch.uf2
+          echo "Build artifacts verified!"
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: hardware-build-artifacts
+          path: |
+            movement/make/build/watch.uf2
+            movement/make/build/watch.elf
+            movement/make/build/watch.bin
+
+  setup-emulator:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Work around CVE-2022-24765
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: '4.0.18'
+
+      - name: Verify Emscripten installation
+        run: |
+          echo "Verifying Emscripten..."
+          emcc --version
+          echo "Emscripten successfully installed!"
+
+      - name: Build emulator
+        run: emmake make
+        working-directory: 'movement/make'
+
+      - name: Verify emulator build artifacts
+        run: |
+          echo "Checking emulator build artifacts..."
+          ls -lh movement/make/build-sim/
+          file movement/make/build-sim/watch.wasm
+          file movement/make/build-sim/watch.js
+          file movement/make/build-sim/watch.html
+          echo "Emulator build artifacts verified!"
+
+      - name: Setup Python for HTTP server
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Test emulator server launch
+        run: |
+          echo "Testing emulator HTTP server..."
+          cd movement/make/build-sim
+          # Start server in background
+          python3 -m http.server 8000 &
+          SERVER_PID=$!
+          echo "Server PID: $SERVER_PID"
+          
+          # Wait for server to start
+          sleep 3
+          
+          # Test if server is responding
+          curl -I --max-time 10 http://localhost:8000/watch.html || (echo "Failed to access emulator" && exit 1)
+          
+          # Stop server
+          kill $SERVER_PID
+          
+          echo "Emulator server successfully launched and tested!"
+
+      - name: Upload emulator artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: emulator-build-artifacts
+          path: |
+            movement/make/build-sim/watch.html
+            movement/make/build-sim/watch.wasm
+            movement/make/build-sim/watch.js
